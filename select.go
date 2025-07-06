@@ -21,6 +21,7 @@ type selectData struct {
 	WhereParts        []Sqlizer
 	GroupBys          []string
 	HavingParts       []Sqlizer
+	QualifyParts      []Sqlizer
 	OrderByParts      []Sqlizer
 	Limit             string
 	Offset            string
@@ -134,6 +135,14 @@ func (d *selectData) toSqlRaw() (sqlStr string, args []interface{}, err error) {
 	if len(d.HavingParts) > 0 {
 		sql.WriteString(" HAVING ")
 		args, err = appendToSql(d.HavingParts, sql, " AND ", args)
+		if err != nil {
+			return
+		}
+	}
+
+	if len(d.QualifyParts) > 0 {
+		sql.WriteString(" QUALIFY ")
+		args, err = appendToSql(d.QualifyParts, sql, " AND ", args)
 		if err != nil {
 			return
 		}
@@ -298,7 +307,8 @@ func (b SelectBuilder) RemoveColumns() SelectBuilder {
 // Column adds a result column to the query.
 // Unlike Columns, Column accepts args which will be bound to placeholders in
 // the columns string, for example:
-//   Column("IF(col IN ("+squirrel.Placeholders(3)+"), 1, 0) as col", 1, 2, 3)
+//
+//	Column("IF(col IN ("+squirrel.Placeholders(3)+"), 1, 0) as col", 1, 2, 3)
 func (b SelectBuilder) Column(column interface{}, args ...interface{}) SelectBuilder {
 	return builder.Append(b, "Columns", newPart(column, args...)).(SelectBuilder)
 }
@@ -382,6 +392,13 @@ func (b SelectBuilder) GroupBy(groupBys ...string) SelectBuilder {
 // See Where.
 func (b SelectBuilder) Having(pred interface{}, rest ...interface{}) SelectBuilder {
 	return builder.Append(b, "HavingParts", newWherePart(pred, rest...)).(SelectBuilder)
+}
+
+// Qualify adds an expression to the QUALIFY clause of the query.
+//
+// See Where.
+func (b SelectBuilder) Qualify(pred interface{}, rest ...interface{}) SelectBuilder {
+	return builder.Append(b, "QualifyParts", newWherePart(pred, rest...)).(SelectBuilder)
 }
 
 // OrderByClause adds ORDER BY clause to the query.
